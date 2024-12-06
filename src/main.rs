@@ -4,6 +4,9 @@ use std::thread;
 use std::time::Duration;
 use std::fs::File;
 use std::process::ChildStdout;
+use libc::{signal, SIGINT};
+use std::process::exit;
+use std::ptr::addr_of_mut;
 
 fn update_discord_installation(installation_path: &str) {
     println!("Download new version...");
@@ -84,19 +87,43 @@ fn run_discord(path: &str) -> Result<Child,std::io::Error> {
         .spawn()
 }
 
-fn main() {
-    let discord_path = "/home/lars/programs/Discord/";
-    let p: Result<Child,std::io::Error> = run_discord(discord_path);
+extern fn handle_sigint(_: i32) {
+    kill_discord();
+    exit(0);
+}
 
-    let mut handle = match p {
-        Ok(mut p) => {
-            let handle = p.stdout.take().unwrap();
+fn kill_discord() -> () {
+    unsafe {
+        let raw_ptr = addr_of_mut!(DISCORD_PROCESS);
+        if let Some(child) = &mut *raw_ptr  {
+            let _ = child.kill();
+        };
+        DISCORD_PROCESS = None;
+    }
+}
+
+static mut DISCORD_PROCESS: Option<Child> = None;
+
+fn main() {
+    unsafe {
+        signal(SIGINT, handle_sigint as libc::sighandler_t);
+    }
+
+    let discord_path = "/home/lars/programs/Discord/";
+    let result: Result<Child,std::io::Error> = run_discord(discord_path);
+
+    let mut handle = match result {
+        Ok(p) => {
+            let mut process:Child = p;
+            let handle:ChildStdout = process.stdout.take().unwrap();
+            unsafe {DISCORD_PROCESS = Some(process);}
             let (needs_update,mut handle) = check_for_update(handle);
             if needs_update {
-                let _ = p.kill();
+                kill_discord();
                 update_discord_installation(discord_path);
-                p = run_discord(discord_path).unwrap();
-                handle = p.stdout.take().unwrap();
+                process = run_discord(discord_path).unwrap();
+                handle = process.stdout.take().unwrap();
+                unsafe {DISCORD_PROCESS = Some(process);}
             }
             handle
         }, 
@@ -104,8 +131,9 @@ fn main() {
             let handle = match e.kind() {
                 std::io::ErrorKind::NotFound =>  {
                     update_discord_installation(discord_path);
-                    let mut p = run_discord(discord_path).unwrap();
-                    let handle = p.stdout.take().unwrap();
+                    let mut process = run_discord(discord_path).unwrap();
+                    let handle = process.stdout.take().unwrap();
+                    unsafe {DISCORD_PROCESS = Some(process);}
                     handle
                 },
                 error => panic!("Got error when trying to open discord:\n{}",error),
