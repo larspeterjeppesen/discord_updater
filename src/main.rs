@@ -9,23 +9,14 @@ use std::process::exit;
 use std::ptr::addr_of_mut;
 
 fn update_discord_installation(installation_path: &str) {
-    println!("Download new version...");
+    println!("Downloading new version...");
     let download_url = "https://discord.com/api/download/stable?platform=linux&format=tar.gz"; 
     let filename = "discord_setup.tar.gz";    
 
     let mut resp = reqwest::blocking::get(download_url).expect("request failed");
     let mut out = File::create(filename).expect("failed to create file");
     let n = resp.copy_to(&mut out).expect("Write to file failed.");
-    println!("New version downloaded. {} bytes written to file.", n);
-  
-    println!("Unpacking file {}", filename); 
-    let command = "tar";
-    let args = ["-xzf", filename, "-C", "extract/"];
-    let _tar = Command::new(command)
-        .args(&args)
-        .spawn()
-        .expect("Could not unpack file.");
-    println!("File unpacked");
+    println!("New version downloaded. {} bytes written to file.", n);    
 
     println!("Deleting old version found at {}", installation_path);
     let command = "rm";
@@ -39,19 +30,42 @@ fn update_discord_installation(installation_path: &str) {
     };
     println!("Old version deleted.");
 
-    println!("Moving new version to destination {}", installation_path);
-    let command = "mv";
-    let source = "extract/Discord";
-    let (destination,_) = installation_path.split_at(installation_path.len() - 1);
-    let args = [&source, destination];
-    println!("Moving downloaded version to {}", destination);
-    let _mv = Command::new(command)
+    // println!("Unpacking file {}", filename); 
+    // let command = "tar";
+    // let args = ["-xzf", filename, "-C", "extract/"];
+    // let _tar = Command::new(command)
+    //     .args(&args)
+    //     .spawn()
+    //     .expect("Could not unpack file.");
+    // println!("File unpacked");
+
+    // let (destination,_) = installation_path.split_at(installation_path.len() - 1);
+    let (destination_path,_) = installation_path[..installation_path.len()-2].rsplit_once('/').unwrap();
+    println!("Unpacking file {} into destination {}", filename, destination_path);
+    let command = "tar";
+    let args = ["-xzf", filename, "-C", destination_path];
+    println!("Command: {}, args: {:?}",command,args);
+    let _tar = Command::new(command)
         .args(&args)
         .spawn()
-        .expect("Could not move new version to PATH destination.");
-    println!("New version moved to PATH destination.")
+        .expect("Could not unpack file.");
+    println!("File unpacked");
+
+    // let tar close file handle
+    thread::sleep(Duration::from_millis(1000));
 
 
+    // println!("Moving new version to destination {}", installation_path);
+    // let command = "mv";
+    // let source = "extract/Discord";
+    // let (destination,_) = installation_path.split_at(installation_path.len() - 1);
+    // let args = [&source, destination];
+    // println!("Moving downloaded version to {}", destination);
+    // let _mv = Command::new(command)
+    //     .args(&args)
+    //     .spawn()
+    //     .expect("Could not move new version to PATH destination.");
+    // println!("New version moved to PATH destination.")
 }
 
 fn check_for_update(mut handle: ChildStdout) -> (bool,ChildStdout) {
