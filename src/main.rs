@@ -30,16 +30,6 @@ fn update_discord_installation(installation_path: &str) {
     };
     println!("Old version deleted.");
 
-    // println!("Unpacking file {}", filename); 
-    // let command = "tar";
-    // let args = ["-xzf", filename, "-C", "extract/"];
-    // let _tar = Command::new(command)
-    //     .args(&args)
-    //     .spawn()
-    //     .expect("Could not unpack file.");
-    // println!("File unpacked");
-
-    // let (destination,_) = installation_path.split_at(installation_path.len() - 1);
     let (destination_path,_) = installation_path[..installation_path.len()-2].rsplit_once('/').unwrap();
     println!("Unpacking file {} into destination {}", filename, destination_path);
     let command = "tar";
@@ -53,19 +43,6 @@ fn update_discord_installation(installation_path: &str) {
 
     // let tar close file handle
     thread::sleep(Duration::from_millis(1000));
-
-
-    // println!("Moving new version to destination {}", installation_path);
-    // let command = "mv";
-    // let source = "extract/Discord";
-    // let (destination,_) = installation_path.split_at(installation_path.len() - 1);
-    // let args = [&source, destination];
-    // println!("Moving downloaded version to {}", destination);
-    // let _mv = Command::new(command)
-    //     .args(&args)
-    //     .spawn()
-    //     .expect("Could not move new version to PATH destination.");
-    // println!("New version moved to PATH destination.")
 }
 
 fn check_for_update(mut handle: ChildStdout) -> (bool,ChildStdout) {
